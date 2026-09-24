@@ -121,6 +121,26 @@ class FraudAnalystRequestHandler(BaseHTTPRequestHandler):
             self._send_json(graph_data)
             return
 
+        # API: Timeline /api/cases/{case_id}/timeline
+        if path.startswith("/api/cases/") and path.endswith("/timeline"):
+            case_id = path.split("/")[3]
+            card_id = ""
+            import csv
+            with open(DATA_DIR / "case_pack.csv", "r", encoding="utf-8") as f:
+                for r in csv.DictReader(f):
+                    if r["case_id"] == case_id:
+                        card_id = r["card_id"]
+                        break
+            if card_id:
+                w_res = graph_gateway.card_window(card_id, 168)
+                txns = w_res.get("transactions", [])
+                txns.sort(key=lambda t: t.get("ts", ""))
+                self._send_json({"case_id": case_id, "card_id": card_id, "timeline": txns[-20:]})
+                return
+            else:
+                self._send_error("Case not found", 404)
+                return
+
         # Static Frontend Assets
         target_file = None
         if path == "/":
@@ -138,6 +158,19 @@ class FraudAnalystRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path.rstrip("/")
+
+        # MCP Standard JSON-RPC 2.0 Endpoint
+        if path == "/mcp":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body_bytes = self.rfile.read(content_length)
+            try:
+                rpc_req = json.loads(body_bytes.decode("utf-8"))
+                from backend.mcp.server import mcp_server
+                rpc_resp = mcp_server.handle_json_rpc(rpc_req)
+                self._send_json(rpc_resp)
+            except Exception as e:
+                self._send_error(f"Malformed JSON-RPC: {e}", 400)
+            return
 
         # API: Re-run investigation /api/investigations/{case_id}/run
         if path.startswith("/api/investigations/") and path.endswith("/run"):

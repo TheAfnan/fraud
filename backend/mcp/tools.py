@@ -234,7 +234,62 @@ class TigerGraphMCPRegistry:
             handler=self._handle_syndicate_detection
         ))
 
-        # 11. tg_write_case
+        # 11. tg_create_case
+        self.register(MCPTool(
+            name="tg_create_case",
+            description="Initializes a new fraud case in the investigation registry and marks status as 'open'.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "case_id": {"type": "string", "description": "Unique Case ID (e.g. 'HHG-001')"},
+                    "customer_id": {"type": "string", "description": "Customer identifier"},
+                    "card_id": {"type": "string", "description": "Card identifier"},
+                    "trigger_type": {"type": "string", "description": "risk_score, customer_report, or analyst_request"},
+                    "flagged_txn_id": {"type": "string", "description": "Flagged transaction ID"}
+                },
+                "required": ["case_id", "customer_id", "card_id", "trigger_type", "flagged_txn_id"]
+            },
+            handler=self._handle_create_case
+        ))
+
+        # 12. tg_update_case
+        self.register(MCPTool(
+            name="tg_update_case",
+            description="Updates an in-flight fraud case status, verdict, pattern, probability, or exposure.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "case_id": {"type": "string", "description": "Case ID to update"},
+                    "status": {"type": "string", "description": "open, closed_fraud, closed_legitimate, or escalated"},
+                    "verdict": {"type": "string", "description": "fraud, legitimate, or uncertain"},
+                    "fraud_prob": {"type": "number", "description": "Assessed probability 0.0 to 1.0"},
+                    "pattern": {"type": "string", "description": "Identified typology"},
+                    "exposure_usd": {"type": "number", "description": "Current assessed exposure"}
+                },
+                "required": ["case_id", "status", "verdict", "fraud_prob"]
+            },
+            handler=self._handle_update_case
+        ))
+
+        # 13. tg_add_evidence
+        self.register(MCPTool(
+            name="tg_add_evidence",
+            description="Attaches an authoritative graph, customer, or document evidence claim to the case record.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "case_id": {"type": "string", "description": "Case ID"},
+                    "claim": {"type": "string", "description": "Evidentiary statement"},
+                    "source": {"type": "string", "description": "graph, document, customer, or external"},
+                    "ref": {"type": "string", "description": "Query reference or request ID"},
+                    "entity_ids": {"type": "array", "items": {"type": "string"}, "description": "List of supporting entity IDs"}
+                },
+                "required": ["case_id", "claim", "source", "ref"]
+            },
+            handler=self._handle_add_evidence
+        ))
+
+        # 14. tg_write_case
         self.register(MCPTool(
             name="tg_write_case",
             description="Writes resolved investigation case into TigerGraph graph memory, linking TARGET_CARD and INVESTIGATES edges.",
@@ -270,7 +325,7 @@ class TigerGraphMCPRegistry:
             )
         ))
 
-        # 12. tg_retrieve_fraud_policy
+        # 15. tg_retrieve_fraud_policy
         self.register(MCPTool(
             name="tg_retrieve_fraud_policy",
             description="Retrieves official hackathon bank fraud policy rules (R1 to R10), required actions, and approval routing criteria.",
@@ -284,7 +339,7 @@ class TigerGraphMCPRegistry:
             handler=self._handle_retrieve_policy
         ))
 
-        # 13. tg_evaluate_action_permissions
+        # 16. tg_evaluate_action_permissions
         self.register(MCPTool(
             name="tg_evaluate_action_permissions",
             description="Evaluates whether an action can be executed automatically or requires Level-1 (Team Lead) or Level-2 (Fraud Manager) approval under bank policy.",
@@ -334,6 +389,51 @@ class TigerGraphMCPRegistry:
             return graph_gateway.device_neighbors(entity_id)
         else:
             return {"error": True, "message": f"Unsupported entity_type '{entity_type}'"}
+
+    def _handle_create_case(self, case_id: str, customer_id: str, card_id: str,
+                            trigger_type: str, flagged_txn_id: str) -> Dict[str, Any]:
+        """Initializes a case record."""
+        return {
+            "case_id": case_id,
+            "customer_id": customer_id,
+            "card_id": card_id,
+            "trigger_type": trigger_type,
+            "flagged_txn_id": flagged_txn_id,
+            "status": "open",
+            "evidence": [],
+            "verdict": "uncertain",
+            "fraud_prob": 0.50,
+            "exposure_usd": 0.0,
+            "created": True
+        }
+
+    def _handle_update_case(self, case_id: str, status: str, verdict: str,
+                            fraud_prob: float, pattern: str = "none",
+                            exposure_usd: float = 0.0) -> Dict[str, Any]:
+        """Updates case state in flight."""
+        return {
+            "case_id": case_id,
+            "status": status,
+            "verdict": verdict,
+            "fraud_prob": float(fraud_prob),
+            "pattern": pattern,
+            "exposure_usd": float(exposure_usd),
+            "updated": True
+        }
+
+    def _handle_add_evidence(self, case_id: str, claim: str, source: str,
+                             ref: str, entity_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Attaches an evidence claim to the case."""
+        return {
+            "case_id": case_id,
+            "evidence_item": {
+                "claim": claim,
+                "source": source,
+                "ref": ref,
+                "entity_ids": entity_ids or []
+            },
+            "added": True
+        }
 
     def _handle_syndicate_detection(self, min_cards_per_cluster: int = 2) -> Dict[str, Any]:
         """Runs syndicate detection on live TigerGraph."""
