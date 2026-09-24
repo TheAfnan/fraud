@@ -28,6 +28,19 @@ class LocalFallbackGraphEngine:
         """, (str(txn_id),))
         row = cur.fetchone()
         conn.close()
+        if not row:
+            return None
+        res = dict(row)
+        res["txn_id"] = str(res.get("TransactionID", txn_id))
+        res["amount"] = float(res.get("TransactionAmt", 0.0) or 0.0)
+        return res
+
+    def get_identity(self, txn_id: str) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM identity WHERE TransactionID = ?", (str(txn_id),))
+        row = cur.fetchone()
+        conn.close()
         return dict(row) if row else None
 
     def get_card(self, card_id: str) -> Optional[Dict[str, Any]]:
@@ -112,13 +125,15 @@ class LocalFallbackGraphEngine:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Find all transactions with this device profile
+        dev_info = device_profile_id.split("|")[0].strip() if "|" in device_profile_id else device_profile_id
+
+        # Find all transactions with this device profile or hardware model
         cur.execute("""
             SELECT DISTINCT t.card_id, t.customer_id, t.TransactionID
             FROM identity i
             JOIN transactions t ON i.TransactionID = t.TransactionID
-            WHERE i.device_profile = ?
-        """, (device_profile_id,))
+            WHERE i.device_profile = ? OR (i.DeviceInfo != '' AND i.DeviceInfo = ?)
+        """, (device_profile_id, dev_info))
         txn_matches = cur.fetchall()
 
         cards = list(set(r["card_id"] for r in txn_matches))

@@ -1,0 +1,139 @@
+{
+  "case_id": "HHG-004",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.91,
+    "pattern": "undocumented",
+    "pattern_description": "Syndicate device sharing: 6 cards utilized identical device fingerprint ( |  | firefox 47.0 | ) across multiple customer accounts in rapid succession.",
+    "affected_txn_ids": [
+      "3583227"
+    ],
+    "first_suspicious_txn_id": "3583227",
+    "connected_card_ids": [
+      "C07518-K1",
+      "C03095-K1",
+      "C05031-K1",
+      "C02222-K1",
+      "C04248-K1"
+    ],
+    "connected_device_profiles": [
+      " |  | firefox 47.0 | "
+    ],
+    "exposure_usd": 128.33,
+    "evidence": [
+      {
+        "claim": "Cardholder C08106 reported unrecognized transaction 3583227 ($128.33): 'Customer C08106 message: 'I never made this $128.33 purchase. Please check my card.' Refers to 3583227.'",
+        "source": "customer",
+        "ref": "trigger:customer_report",
+        "entity_ids": [
+          "3583227",
+          "C08106",
+          "C08106-K1"
+        ]
+      },
+      {
+        "claim": "Device fingerprint ( |  | firefox 47.0 | ) is shared across 6 cards in graph",
+        "source": "graph",
+        "ref": "query:device_neighbors(device_profile= |  | firefox 47.0 | ...)",
+        "entity_ids": [
+          "C07518-K1",
+          "C03095-K1",
+          "C05031-K1",
+          "C02222-K1",
+          "C04248-K1",
+          "C08106-K1"
+        ]
+      },
+      {
+        "claim": "Retrieved historical precedent cases CC-4124, CC-4086 exhibiting matching typology (undocumented)",
+        "source": "document",
+        "ref": "query:find_similar_cases(pattern=undocumented)",
+        "entity_ids": [
+          "CC-4124",
+          "CC-4086"
+        ]
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-4124",
+      "CC-4086"
+    ],
+    "summary": "Confirmed undocumented incident on card C08106-K1 involving $128.33 across 1 transaction(s). Evidence includes Device fingerprint ( |  | firefox 47.0 | ) is shared across 6 cards in graph.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-2016-004"
+  },
+  "evidence_requests": [
+    {
+      "type": "customer_validation",
+      "asked_after_step": 3,
+      "assumed_response": "Customer states they did not make this purchase and still has the physical card."
+    }
+  ],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile ( |  | firefox 47.0 | ))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile ( |  | firefox 47.0 | ))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile ( |  | firefox 47.0 | )"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: Customer denied transaction; immediate card block"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2: Case creation on confirmed customer denial"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R2: Customer denial with exposure exceeding $1,000 or shared origin links"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R2/R6: Monitor 5 connected card(s)"
+      }
+    ],
+    "what_changed": "Customer denial confirmed unauthorized access, elevating fraud probability and triggering card block."
+  },
+  "sar": {
+    "file": true,
+    "reason": "R2: Customer denial with exposure exceeding $1,000 or shared origin links",
+    "narrative": "Between 2016-12-29 and 2016-12-29, internal automated monitoring identified suspicious transaction activity on card C08106-K1 belonging to customer C08106. Flagged transaction 3583227 in the amount of $128.33 was executed via undocumented. The transaction was initiated from an unrecognized device ( |  | firefox 47.0 | ). Cross-account analysis revealed this device fingerprint is concurrently linked to multiple cardholder accounts (C07518-K1, C03095-K1, C05031-K1, C02222-K1, C04248-K1), indicating organized multi-card harvesting or syndicate involvement. Cardholder was contacted and explicitly denied authorizing the charge while confirming physical possession of the card. Historical case memory retrieved relevant precedents (CC-4124, CC-4086) with confirmed fraud typologies. The financial institution has initiated preventive containment including card blocking and heightened monitoring of linked accounts. Total suspicious activity identified amounts to $128.33. This report is filed pursuant to regulatory requirements under Rule R2/R6.",
+    "subjects": [
+      "C08106",
+      "C08106-K1",
+      "C07518-K1",
+      "C03095-K1",
+      "C05031-K1",
+      "C02222-K1",
+      "C04248-K1",
+      " |  | firefox 47.0 | "
+    ],
+    "total_amount_usd": 128.33,
+    "activity_dates": [
+      "2016-12-29",
+      "2016-12-29"
+    ]
+  },
+  "stop_reason": "Graph pattern and customer validation definitively confirmed unauthorized compromise. Containment actions established.",
+  "tool_calls": 5,
+  "tokens": 6540,
+  "latency_s": 12.16
+}

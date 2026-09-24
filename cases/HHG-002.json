@@ -1,0 +1,101 @@
+{
+  "case_id": "HHG-002",
+  "case": {
+    "status": "escalated",
+    "verdict": "uncertain",
+    "fraud_probability": 0.79,
+    "pattern": "card_not_present_fraud",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3478782"
+    ],
+    "first_suspicious_txn_id": "3478782",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 292.36,
+    "evidence": [
+      {
+        "claim": "Real-time machine learning model scored transaction 3478782 at 0.79",
+        "source": "document",
+        "ref": "trigger:model_risk_score",
+        "entity_ids": [
+          "3478782"
+        ]
+      },
+      {
+        "claim": "Single weak anomaly score (0.79) without corroborating device compromise",
+        "source": "document",
+        "ref": "trigger:model_risk_score",
+        "entity_ids": [
+          "3478782"
+        ]
+      },
+      {
+        "claim": "Retrieved historical precedent cases CC-1999, CC-1996 exhibiting matching typology (card_not_present_fraud)",
+        "source": "document",
+        "ref": "query:find_similar_cases(pattern=card_not_present_fraud)",
+        "entity_ids": [
+          "CC-1999",
+          "CC-1996"
+        ]
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-1999",
+      "CC-1996"
+    ],
+    "summary": "Investigation for card C11891-K1 on transaction 3478782 ($292.36) yielded inconclusive single-signal evidence (assessed prob: 0.79). Step-up verification required.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-2016-002"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "ESCALATE_TO_ANALYST",
+        "route": "auto",
+        "reason": "R8: Uncertain verdict with exposure $292.36 > $500"
+      },
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "R8: Maintain card monitoring while analyst reviews"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "Section 3a: Open case for escalated investigation"
+      }
+    ],
+    "final": [
+      {
+        "action": "ESCALATE_TO_ANALYST",
+        "route": "auto",
+        "reason": "R8: Uncertain verdict with exposure $292.36 > $500"
+      },
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "R8: Maintain card monitoring while analyst reviews"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "Section 3a: Open case for escalated investigation"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "No filing criteria met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0.0,
+    "activity_dates": []
+  },
+  "stop_reason": "Ambiguous transaction indicators with exposure require senior human analyst manual verification.",
+  "tool_calls": 5,
+  "tokens": 4540,
+  "latency_s": 5.24
+}

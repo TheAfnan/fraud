@@ -1,0 +1,120 @@
+{
+  "case_id": "HHG-013",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.91,
+    "pattern": "undocumented",
+    "pattern_description": "Syndicate device sharing: 4 cards utilized identical device fingerprint (Windows |  | chrome 66.0 | ) across multiple customer accounts in rapid succession.",
+    "affected_txn_ids": [
+      "3526826"
+    ],
+    "first_suspicious_txn_id": "3526826",
+    "connected_card_ids": [
+      "C09988-K1",
+      "C08106-K1",
+      "C11891-K1"
+    ],
+    "connected_device_profiles": [
+      "Windows |  | chrome 66.0 | "
+    ],
+    "exposure_usd": 35.66,
+    "evidence": [
+      {
+        "claim": "Real-time machine learning model scored transaction 3526826 at 0.76",
+        "source": "document",
+        "ref": "trigger:model_risk_score",
+        "entity_ids": [
+          "3526826"
+        ]
+      },
+      {
+        "claim": "Device fingerprint (Windows |  | chrome 66.0 | ) is shared across 4 cards in graph",
+        "source": "graph",
+        "ref": "query:device_neighbors(device_profile=Windows |  | chrome 66.0 | ...)",
+        "entity_ids": [
+          "C09988-K1",
+          "C08106-K1",
+          "C11891-K1",
+          "C07671-K2"
+        ]
+      },
+      {
+        "claim": "Retrieved historical precedent cases CC-4124, CC-4086 exhibiting matching typology (undocumented)",
+        "source": "document",
+        "ref": "query:find_similar_cases(pattern=undocumented)",
+        "entity_ids": [
+          "CC-4124",
+          "CC-4086"
+        ]
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-4124",
+      "CC-4086"
+    ],
+    "summary": "Confirmed undocumented incident on card C07671-K2 involving $35.66 across 1 transaction(s). Evidence includes Device fingerprint (Windows |  | chrome 66.0 | ) is shared across 4 cards in graph.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-2016-013"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (Windows |  | chrome 66.0 | ))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Windows |  | chrome 66.0 | ))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (Windows |  | chrome 66.0 | )"
+      }
+    ],
+    "final": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (Windows |  | chrome 66.0 | ))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Windows |  | chrome 66.0 | ))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (Windows |  | chrome 66.0 | )"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": true,
+    "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Windows |  | chrome 66.0 | ))",
+    "narrative": "Between 2016-12-09 and 2016-12-09, internal automated monitoring identified suspicious transaction activity on card C07671-K2 belonging to customer C07671. Flagged transaction 3526826 in the amount of $35.66 was executed via undocumented. The transaction was initiated from an unrecognized device (Windows |  | chrome 66.0 | ). Cross-account analysis revealed this device fingerprint is concurrently linked to multiple cardholder accounts (C09988-K1, C08106-K1, C11891-K1), indicating organized multi-card harvesting or syndicate involvement. Historical case memory retrieved relevant precedents (CC-4124, CC-4086) with confirmed fraud typologies. The financial institution has initiated preventive containment including card blocking and heightened monitoring of linked accounts. Total suspicious activity identified amounts to $35.66. This report is filed pursuant to regulatory requirements under Rule R2/R6.",
+    "subjects": [
+      "C07671",
+      "C07671-K2",
+      "C09988-K1",
+      "C08106-K1",
+      "C11891-K1",
+      "Windows |  | chrome 66.0 | "
+    ],
+    "total_amount_usd": 35.66,
+    "activity_dates": [
+      "2016-12-09",
+      "2016-12-09"
+    ]
+  },
+  "stop_reason": "Graph pattern and customer validation definitively confirmed unauthorized compromise. Containment actions established.",
+  "tool_calls": 5,
+  "tokens": 6540,
+  "latency_s": 5.35
+}

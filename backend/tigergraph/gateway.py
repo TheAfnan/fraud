@@ -58,9 +58,19 @@ class GraphGateway:
                 })
                 row = res.get("results", [{}])[0]
                 if row and row.get("device_profile_id"):
-                    row["cards"] = row.get("Cards", [])
-                    row["customers"] = row.get("Customers", [])
-                    row["cases"] = row.get("Cases", [])
+                    row["cards"] = list(row.get("Cards", []))
+                    row["customers"] = list(row.get("Customers", []))
+                    row["cases"] = list(row.get("Cases", []))
+                    
+                    # Enrich with dataset-wide device neighbor intelligence if needed
+                    if len(row["cards"]) <= 1:
+                        fb = fallback_engine.device_neighbors(device_profile_id)
+                        if fb.get("card_count", 0) > 1:
+                            existing_cids = {c.get("v_id") or c.get("attributes", {}).get("Cards.card_id") for c in row["cards"]}
+                            for extra_cid in fb.get("cards", []):
+                                if extra_cid not in existing_cids:
+                                    row["cards"].append({"v_id": extra_cid, "v_type": "Card", "attributes": {"Cards.card_id": extra_cid}})
+                            row["card_count"] = len(row["cards"])
                     return row
             except Exception as e:
                 logger.warning(f"TigerGraph live query failed: {e}. Falling back.")
@@ -151,6 +161,9 @@ class GraphGateway:
 
     def get_transaction(self, txn_id: str) -> Optional[Dict[str, Any]]:
         return fallback_engine.get_transaction(txn_id)
+
+    def get_identity(self, txn_id: str) -> Optional[Dict[str, Any]]:
+        return fallback_engine.get_identity(txn_id)
 
     def get_card(self, card_id: str) -> Optional[Dict[str, Any]]:
         return fallback_engine.get_card(card_id)

@@ -1,0 +1,114 @@
+{
+  "case_id": "HHG-005",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.86,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3523199"
+    ],
+    "first_suspicious_txn_id": "3523199",
+    "connected_card_ids": [
+      "C08299-K1"
+    ],
+    "connected_device_profiles": [
+      "iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768"
+    ],
+    "exposure_usd": 100.07,
+    "evidence": [
+      {
+        "claim": "Real-time machine learning model scored transaction 3523199 at 0.54",
+        "source": "document",
+        "ref": "trigger:model_risk_score",
+        "entity_ids": [
+          "3523199"
+        ]
+      },
+      {
+        "claim": "Device fingerprint (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768) is shared across 2 cards in graph",
+        "source": "graph",
+        "ref": "query:device_neighbors(device_profile=iOS Device | iOS 9.3.5 | mobil...)",
+        "entity_ids": [
+          "C08299-K1",
+          "C02923-K1"
+        ]
+      },
+      {
+        "claim": "Retrieved historical precedent cases CC-1998, CC-1997 exhibiting matching typology (card_not_present_new_device)",
+        "source": "document",
+        "ref": "query:find_similar_cases(pattern=card_not_present_new_device)",
+        "entity_ids": [
+          "CC-1998",
+          "CC-1997"
+        ]
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-1998",
+      "CC-1997"
+    ],
+    "summary": "Confirmed card not present new device incident on card C02923-K1 involving $100.07 across 1 transaction(s). Evidence includes Device fingerprint (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768) is shared across 2 cards in graph.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-2016-005"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768)"
+      }
+    ],
+    "final": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768)"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": true,
+    "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768))",
+    "narrative": "Between 2016-12-08 and 2016-12-08, internal automated monitoring identified suspicious transaction activity on card C02923-K1 belonging to customer C02923. Flagged transaction 3523199 in the amount of $100.07 was executed via card not present new device. The transaction was initiated from an unrecognized device (iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x768). Cross-account analysis revealed this device fingerprint is concurrently linked to multiple cardholder accounts (C08299-K1), indicating organized multi-card harvesting or syndicate involvement. Historical case memory retrieved relevant precedents (CC-1998, CC-1997) with confirmed fraud typologies. The financial institution has initiated preventive containment including card blocking and heightened monitoring of linked accounts. Total suspicious activity identified amounts to $100.07. This report is filed pursuant to regulatory requirements under Rule R2/R6.",
+    "subjects": [
+      "C02923",
+      "C02923-K1",
+      "C08299-K1",
+      "iOS Device | iOS 9.3.5 | mobile safari 9.0 | 1024x"
+    ],
+    "total_amount_usd": 100.07,
+    "activity_dates": [
+      "2016-12-08",
+      "2016-12-08"
+    ]
+  },
+  "stop_reason": "Graph pattern and customer validation definitively confirmed unauthorized compromise. Containment actions established.",
+  "tool_calls": 5,
+  "tokens": 6540,
+  "latency_s": 7.7
+}

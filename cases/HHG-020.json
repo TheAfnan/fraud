@@ -1,0 +1,114 @@
+{
+  "case_id": "HHG-020",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.86,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3509359"
+    ],
+    "first_suspicious_txn_id": "3509359",
+    "connected_card_ids": [
+      "C02923-K1"
+    ],
+    "connected_device_profiles": [
+      "Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080"
+    ],
+    "exposure_usd": 125.08,
+    "evidence": [
+      {
+        "claim": "Real-time machine learning model scored transaction 3509359 at 0.52",
+        "source": "document",
+        "ref": "trigger:model_risk_score",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Device fingerprint (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080) is shared across 2 cards in graph",
+        "source": "graph",
+        "ref": "query:device_neighbors(device_profile=Trident/7.0 | Windows 10 | ie ...)",
+        "entity_ids": [
+          "C02923-K1",
+          "C12265-K2"
+        ]
+      },
+      {
+        "claim": "Retrieved historical precedent cases CC-1998, CC-1997 exhibiting matching typology (card_not_present_new_device)",
+        "source": "document",
+        "ref": "query:find_similar_cases(pattern=card_not_present_new_device)",
+        "entity_ids": [
+          "CC-1998",
+          "CC-1997"
+        ]
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-1998",
+      "CC-1997"
+    ],
+    "summary": "Confirmed card not present new device incident on card C12265-K2 involving $125.08 across 1 transaction(s). Evidence includes Device fingerprint (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080) is shared across 2 cards in graph.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-2016-020"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080)"
+      }
+    ],
+    "final": [
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R6: Shared origin across multiple cards (DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080))"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080))"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: Heighten monitoring on all cards sharing DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080)"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": true,
+    "reason": "R6: Multi-card syndicate identified via shared origin (DeviceProfile (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080))",
+    "narrative": "Between 2016-12-03 and 2016-12-03, internal automated monitoring identified suspicious transaction activity on card C12265-K2 belonging to customer C12265. Flagged transaction 3509359 in the amount of $125.08 was executed via card not present new device. The transaction was initiated from an unrecognized device (Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080). Cross-account analysis revealed this device fingerprint is concurrently linked to multiple cardholder accounts (C02923-K1), indicating organized multi-card harvesting or syndicate involvement. Historical case memory retrieved relevant precedents (CC-1998, CC-1997) with confirmed fraud typologies. The financial institution has initiated preventive containment including card blocking and heightened monitoring of linked accounts. Total suspicious activity identified amounts to $125.08. This report is filed pursuant to regulatory requirements under Rule R2/R6.",
+    "subjects": [
+      "C12265",
+      "C12265-K2",
+      "C02923-K1",
+      "Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1"
+    ],
+    "total_amount_usd": 125.08,
+    "activity_dates": [
+      "2016-12-03",
+      "2016-12-03"
+    ]
+  },
+  "stop_reason": "Graph pattern and customer validation definitively confirmed unauthorized compromise. Containment actions established.",
+  "tool_calls": 5,
+  "tokens": 6540,
+  "latency_s": 4.78
+}

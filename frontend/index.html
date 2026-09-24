@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TigerGraph Fraud Investigation Workstation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-indigo: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Top Bar */
+    header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header-title { display: flex; align-items: center; gap: 12px; }
+    .header-title h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-badge.live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+    .header-stats { display: flex; gap: 20px; }
+    .stat-pill { background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; }
+    .stat-pill span { font-weight: bold; color: var(--accent-blue); }
+
+    /* Main Grid */
+    .dashboard-container {
+      display: grid;
+      grid-template-columns: 320px 1fr 420px;
+      flex: 1;
+      height: calc(100vh - 54px - 180px);
+      overflow: hidden;
+    }
+
+    /* Column 1: Case Queue */
+    .case-queue {
+      background-color: #131d31;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .queue-header { padding: 12px; border-bottom: 1px solid var(--border); }
+    .queue-search { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: #fff; font-size: 0.8rem; }
+    .queue-list { overflow-y: auto; flex: 1; }
+    .case-item {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .case-item:hover { background-color: var(--bg-card-hover); }
+    .case-item.active { background-color: rgba(59, 130, 246, 0.15); border-left: 3px solid var(--accent-blue); }
+    .case-item-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85rem; font-weight: 600; }
+    .case-item-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .badge-fraud { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-legit { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-escalated { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* Column 2: Graph & Timeline */
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+    }
+    .graph-view-header {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    #cy { flex: 1; width: 100%; height: 100%; background: #0c1222; }
+    .graph-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      font-size: 0.7rem;
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+    /* Column 3: Decision & SAR Details */
+    .right-panel {
+      background-color: #131d31;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .card-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
+    .score-meter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .score-bar-bg { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
+    .action-step {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      font-size: 0.78rem;
+    }
+    .action-route {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .route-auto { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+    .route-L1 { background: rgba(245,158,11,0.2); color: var(--accent-amber); }
+    .route-L2 { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+
+    .sar-narrative-box {
+      background: #0c1222;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      color: #cbd5e1;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    /* Bottom Panel: Evidence & Case Memory */
+    .bottom-panel {
+      height: 180px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .tabs-header {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+    .tab-content { flex: 1; overflow-y: auto; padding: 12px 16px; font-size: 0.78rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 6px 8px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+    .btn-rerun {
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-rerun:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="header-title">
+      <h1>TigerGraph Fraud Investigation Workstation</h1>
+      <span class="status-badge live" id="tg-status-badge">TIGERGRAPH_LIVE (Savanna Cloud 4.2.5)</span>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Graph: <strong>FraudGraph</strong></span>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">Benchmark: <span id="stat-cases-count">20</span> Cases</div>
+      <div class="stat-pill">Confirmed Fraud: <span id="stat-fraud-count" style="color:var(--accent-red)">--</span></div>
+      <div class="stat-pill">Cleared: <span id="stat-cleared-count" style="color:var(--accent-green)">--</span></div>
+      <div class="stat-pill">SARs Filed: <span id="stat-sar-count" style="color:var(--accent-amber)">--</span></div>
+      <div class="stat-pill">Total Exposure: <span id="stat-exposure-total">--</span></div>
+    </div>
+  </header>
+
+  <!-- Main Three-Column Layout -->
+  <div class="dashboard-container">
+    
+    <!-- Col 1: Case Queue -->
+    <div class="case-queue">
+      <div class="queue-header">
+        <input type="text" class="queue-search" id="case-search" placeholder="Search case, card, customer..." oninput="filterCases()">
+      </div>
+      <div class="queue-list" id="case-list-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Col 2: Graph Explorer & Network -->
+    <div class="center-panel">
+      <div class="graph-view-header">
+        <div>
+          <span>Multi-Hop Entity Subgraph: </span>
+          <strong id="current-graph-case-title">Loading...</strong>
+        </div>
+        <div>
+          <button class="btn-rerun" onclick="reInvestigateCurrentCase()">Re-Investigate (Live TG)</button>
+        </div>
+      </div>
+      <div id="cy"></div>
+      <div class="graph-legend">
+        <div><span class="legend-dot" style="background:#3B82F6"></span>Customer</div>
+        <div><span class="legend-dot" style="background:#8B5CF6"></span>Card</div>
+        <div><span class="legend-dot" style="background:#EF4444"></span>Flagged Txn</div>
+        <div><span class="legend-dot" style="background:#F59E0B"></span>DeviceProfile</div>
+        <div><span class="legend-dot" style="background:#EC4899"></span>Linked Card</div>
+        <div><span class="legend-dot" style="background:#6366F1"></span>Past Precedent</div>
+      </div>
+    </div>
+
+    <!-- Col 3: Assessment, Actions & SAR -->
+    <div class="right-panel">
+      <!-- Verdict Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Autonomous Verdict</span>
+          <span id="card-verdict-badge" class="badge">--</span>
+        </div>
+        <div class="score-meter">
+          <span style="font-size:0.8rem; font-weight:700;">Risk:</span>
+          <div class="score-bar-bg">
+            <div id="score-bar-fill" class="score-bar-fill" style="width: 0%; background: var(--accent-blue);"></div>
+          </div>
+          <span id="score-text" style="font-size:0.85rem; font-weight:bold;">0%</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">
+          Typology: <strong id="val-pattern" style="color:#fff;">--</strong><br>
+          Exposure: <strong id="val-exposure" style="color:#fff;">$0.00</strong><br>
+          Written to Graph: <strong id="val-written-tg" style="color:var(--accent-green)">Yes (CASE-2016-...)</strong>
+        </div>
+      </div>
+
+      <!-- Next Best Actions -->
+      <div class="card">
+        <div class="card-title">Next Best Actions (R1-R10 Policy)</div>
+        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">INITIAL ACTIONS (Pre-Evidence):</div>
+        <div id="initial-actions-list">--</div>
+        
+        <div style="font-size:0.7rem; color:var(--text-muted); margin:10px 0 6px 0;">CUSTOMER VALIDATION:</div>
+        <div id="evidence-request-box" style="font-size:0.75rem; background:rgba(255,255,255,0.03); padding:6px; border-radius:4px; color:#93c5fd;">
+          --
+        </div>
+
+        <div style="font-size:0.7rem; color:var(--text-muted); margin:10px 0 6px 0;">FINAL RECOMMENDATIONS:</div>
+        <div id="final-actions-list">--</div>
+      </div>
+
+      <!-- SAR Inspector -->
+      <div class="card">
+        <div class="card-title">
+          <span>Suspicious Activity Report (SAR)</span>
+          <span id="sar-badge" class="badge badge-legit">NO FILING</span>
+        </div>
+        <div style="font-size:0.75rem; margin-bottom:6px;">
+          Filing Reason: <span id="sar-reason" style="color:var(--text-muted)">--</span>
+        </div>
+        <div class="sar-narrative-box" id="sar-narrative-text">
+          No regulatory narrative required for this case.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Panel: Multi-Tab Evidence & Case Memory -->
+  <div class="bottom-panel">
+    <div class="tabs-header">
+      <button class="tab-btn active" onclick="switchTab('tab-evidence')">Structured Graph Evidence</button>
+      <button class="tab-btn" onclick="switchTab('tab-memory')">Historical Case Memory Precedents</button>
+      <button class="tab-btn" onclick="switchTab('tab-audit')">TigerGraph Audit & Schema Linkage</button>
+    </div>
+    
+    <div id="tab-evidence" class="tab-content">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 45%;">Evidence Claim</th>
+            <th style="width: 15%;">Source</th>
+            <th style="width: 25%;">Graph Query Reference</th>
+            <th style="width: 15%;">Entity IDs</th>
+          </tr>
+        </thead>
+        <tbody id="evidence-table-body">
+          <!-- Rendered dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <div id="tab-memory" class="tab-content" style="display:none;">
+      <div id="case-memory-content">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div id="tab-audit" class="tab-content" style="display:none;">
+      <div style="line-height:1.6; color:#cbd5e1;">
+        TigerGraph Savanna Workspace: <code>https://tg-b9ee7f87-0777-4430-bc0b-f618ef476154.tg-2635877100.i.tgcloud.io</code><br>
+        Target Graph: <code>FraudGraph</code> | Vertices: <code>Customer, Card, Transaction, DeviceProfile, BillingRegion, ClosedCase, InvestigationCase</code><br>
+        Installed Queries Executing: <code>card_window, device_neighbors, cluster_analysis, find_similar_cases, detect_fraud_syndicates, write_case_to_graph</code><br>
+        Deterministic Policy Enforcement: Rules R1 to R10 verified with automated auto/L1/L2 routing.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allCases = [];
+    let currentCaseId = "HHG-001";
+    let cy = null;
+
+    async function initDashboard() {
+      initCytoscape();
+      await fetchHealth();
+      await loadCaseQueue();
+      if (allCases.length > 0) {
+        selectCase(allCases[0].case_id);
+      }
+    }
+
+    function initCytoscape() {
+      cy = cytoscape({
+        container: document.getElementById('cy'),
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': 'data(color)',
+              'label': 'data(label)',
+              'color': '#fff',
+              'font-size': '10px',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'text-wrap': 'wrap',
+              'width': '65px',
+              'height': '65px',
+              'border-width': 2,
+              'border-color': '#ffffff'
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 2,
+              'line-color': '#475569',
+              'target-arrow-color': '#475569',
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+              'label': 'data(label)',
+              'font-size': '8px',
+              'color': '#94a3b8'
+            }
+          },
+          {
+            selector: 'node[?highlight]',
+            style: {
+              'border-color': '#f59e0b',
+              'border-width': 4,
+              'width': '75px',
+              'height': '75px'
+            }
+          }
+        ],
+        layout: { name: 'cose', padding: 30, animate: false }
+      });
+    }
+
+    async function fetchHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        const badge = document.getElementById('tg-status-badge');
+        if (data.tigergraph && data.tigergraph.live) {
+          badge.className = 'status-badge live';
+          badge.textContent = `TIGERGRAPH_LIVE (Savanna Cloud 4.2.5 - ${data.tigergraph.latency_ms.toFixed(0)}ms)`;
+        } else {
+          badge.className = 'status-badge';
+          badge.style.color = '#f59e0b';
+          badge.textContent = 'TigerGraph Offline';
+        }
+      } catch (e) {
+        console.warn('Health fetch error:', e);
+      }
+    }
+
+    async function loadCaseQueue() {
+      try {
+        const res = await fetch('/api/cases');
+        const data = await res.json();
+        allCases = data.cases || [];
+        renderCaseList(allCases);
+        updateTopStats(allCases);
+      } catch (e) {
+        console.error('Error loading cases:', e);
+      }
+    }
+
+    function renderCaseList(cases) {
+      const container = document.getElementById('case-list-container');
+      container.innerHTML = '';
+      cases.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `case-item ${c.case_id === currentCaseId ? 'active' : ''}`;
+        div.onclick = () => selectCase(c.case_id);
+
+        let badgeClass = 'badge-escalated';
+        if (c.verdict === 'fraud') badgeClass = 'badge-fraud';
+        if (c.verdict === 'legitimate') badgeClass = 'badge-legit';
+
+        div.innerHTML = `
+          <div class="case-item-header">
+            <span>${c.case_id}</span>
+            <span class="badge ${badgeClass}">${(c.verdict || 'PENDING').toUpperCase()}</span>
+          </div>
+          <div class="case-item-meta">
+            <span>${c.pattern || 'none'}</span>
+            <span>${c.exposure_usd > 0 ? '$' + c.exposure_usd.toFixed(2) : '$0.00'}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateTopStats(cases) {
+      document.getElementById('stat-cases-count').textContent = cases.length;
+      let fraudCount = cases.filter(c => c.verdict === 'fraud').length;
+      let legitCount = cases.filter(c => c.verdict === 'legitimate').length;
+      let sarCount = cases.filter(c => c.sar_filed).length;
+      let totalExposure = cases.reduce((acc, c) => acc + (c.exposure_usd || 0), 0);
+
+      document.getElementById('stat-fraud-count').textContent = fraudCount;
+      document.getElementById('stat-cleared-count').textContent = legitCount;
+      document.getElementById('stat-sar-count').textContent = sarCount;
+      document.getElementById('stat-exposure-total').textContent = `$${totalExposure.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    }
+
+    async function selectCase(caseId) {
+      currentCaseId = caseId;
+      document.getElementById('current-graph-case-title').textContent = `${caseId} Investigation Subgraph`;
+
+      // Update active list styling
+      document.querySelectorAll('.case-item').forEach(el => el.classList.remove('active'));
+      const activeEl = Array.from(document.querySelectorAll('.case-item')).find(el => el.innerHTML.includes(caseId));
+      if (activeEl) activeEl.classList.add('active');
+
+      // Fetch case details
+      try {
+        const res = await fetch(`/api/cases/${caseId}`);
+        const caseRecord = await res.json();
+        renderCaseDetails(caseRecord);
+      } catch (e) {
+        console.error('Error fetching case:', e);
+      }
+
+      // Fetch graph elements
+      try {
+        const gRes = await fetch(`/api/investigations/${caseId}/graph`);
+        const gData = await gRes.json();
+        if (cy && gData.elements) {
+          cy.elements().remove();
+          cy.add(gData.elements.nodes || []);
+          cy.add(gData.elements.edges || []);
+          cy.layout({ name: 'cose', animate: false, padding: 35 }).run();
+        }
+      } catch (e) {
+        console.error('Error fetching graph:', e);
+      }
+    }
+
+    function renderCaseDetails(record) {
+      const c = record.case || {};
+      const verdict = c.verdict || 'uncertain';
+      const prob = c.fraud_probability || 0.0;
+
+      // Verdict & Score
+      const badge = document.getElementById('card-verdict-badge');
+      badge.textContent = verdict.toUpperCase();
+      badge.className = `badge ${verdict === 'fraud' ? 'badge-fraud' : (verdict === 'legitimate' ? 'badge-legit' : 'badge-escalated')}`;
+
+      const fill = document.getElementById('score-bar-fill');
+      const scorePct = Math.round(prob * 100);
+      fill.style.width = `${scorePct}%`;
+      fill.style.background = verdict === 'fraud' ? 'var(--accent-red)' : (verdict === 'legitimate' ? 'var(--accent-green)' : 'var(--accent-amber)');
+      document.getElementById('score-text').textContent = `${scorePct}%`;
+
+      document.getElementById('val-pattern').textContent = c.pattern || 'none';
+      document.getElementById('val-exposure').textContent = `$${(c.exposure_usd || 0).toFixed(2)}`;
+      document.getElementById('val-written-tg').textContent = c.written_to_graph ? `Yes (${c.graph_case_id || 'TigerGraph'})` : 'No';
+
+      // Next Best Actions
+      const nba = record.next_best_actions || {};
+      const initContainer = document.getElementById('initial-actions-list');
+      initContainer.innerHTML = '';
+      (nba.initial || []).forEach(a => {
+        initContainer.innerHTML += `
+          <div class="action-step">
+            <span class="action-route route-${a.route}">${a.route}</span>
+            <strong>${a.action}</strong>: ${a.reason}
+          </div>
+        `;
+      });
+
+      // Evidence request
+      const evReqs = record.evidence_requests || [];
+      const evBox = document.getElementById('evidence-request-box');
+      if (evReqs.length > 0) {
+        evBox.innerHTML = `<strong>${evReqs[0].type}:</strong> "${evReqs[0].assumed_response}"`;
+      } else {
+        evBox.innerHTML = `<em>No additional customer validation required.</em>`;
+      }
+
+      // Final actions
+      const finalContainer = document.getElementById('final-actions-list');
+      finalContainer.innerHTML = '';
+      (nba.final || []).forEach(a => {
+        finalContainer.innerHTML += `
+          <div class="action-step">
+            <span class="action-route route-${a.route}">${a.route}</span>
+            <strong>${a.action}</strong>: ${a.reason}
+          </div>
+        `;
+      });
+
+      // SAR
+      const sar = record.sar || {};
+      const sarBadge = document.getElementById('sar-badge');
+      if (sar.file) {
+        sarBadge.textContent = 'SAR REQUIRED';
+        sarBadge.className = 'badge badge-fraud';
+      } else {
+        sarBadge.textContent = 'NO FILING';
+        sarBadge.className = 'badge badge-legit';
+      }
+      document.getElementById('sar-reason').textContent = sar.reason || '--';
+      document.getElementById('sar-narrative-text').textContent = sar.narrative || 'No regulatory report required for this case.';
+
+      // Bottom Evidence Table
+      const tbody = document.getElementById('evidence-table-body');
+      tbody.innerHTML = '';
+      (c.evidence || []).forEach(ev => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${ev.claim}</strong></td>
+          <td><span class="badge" style="background:rgba(255,255,255,0.05);">${ev.source}</span></td>
+          <td><code>${ev.ref}</code></td>
+          <td>${(ev.entity_ids || []).join(', ')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Bottom Case Memory
+      const memDiv = document.getElementById('case-memory-content');
+      memDiv.innerHTML = `
+        <p><strong>Similar Prior Cases Retrieved from TigerGraph:</strong> ${c.similar_prior_cases && c.similar_prior_cases.length ? c.similar_prior_cases.join(', ') : 'None'}</p>
+        <p style="margin-top:6px; color:var(--text-muted);">${c.summary || ''}</p>
+      `;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      event.target.classList.add('active');
+      document.getElementById(tabId).style.display = 'block';
+    }
+
+    function filterCases() {
+      const q = document.getElementById('case-search').value.toLowerCase();
+      const filtered = allCases.filter(c => c.case_id.toLowerCase().includes(q) || (c.pattern || '').toLowerCase().includes(q));
+      renderCaseList(filtered);
+    }
+
+    async function reInvestigateCurrentCase() {
+      const btn = event.target;
+      btn.textContent = 'Investigating...';
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/investigations/${currentCaseId}/run`, { method: 'POST' });
+        const updated = await res.json();
+        renderCaseDetails(updated);
+        await loadCaseQueue();
+      } catch (e) {
+        alert('Re-investigation failed: ' + e);
+      } finally {
+        btn.textContent = 'Re-Investigate (Live TG)';
+        btn.disabled = false;
+      }
+    }
+
+    window.onload = initDashboard;
+  </script>
+</body>
+</html>
