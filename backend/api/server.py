@@ -69,7 +69,9 @@ class FraudAnalystRequestHandler(BaseHTTPRequestHandler):
                 "tigergraph": engine_status,
                 "coverage": coverage,
                 "policy_version": "1.0",
-                "mcp_tools_count": 13,
+                "mcp_implementation": "custom_mcp_compatible_server",
+                "llm_runtime": "unavailable_in_environment_deterministic_policy_reasoning_used",
+                "mcp_tools_count": 16,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             })
             return

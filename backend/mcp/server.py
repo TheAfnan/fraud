@@ -62,7 +62,8 @@ class TigerGraphMCPServer:
             },
             "serverInfo": {
                 "name": self.SERVER_NAME,
-                "version": self.SERVER_VERSION
+                "version": self.SERVER_VERSION,
+                "mcp_implementation": "custom_mcp_compatible_server"
             }
         })
 
