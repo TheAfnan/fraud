@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TigerGraph-Powered Agentic Fraud Investigation System - Technical Report</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 18mm 18mm 18mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.6;
+    font-size: 13.5px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px;
+  }
+  .header {
+    border-bottom: 3px solid #2563eb;
+    padding-bottom: 14px;
+    margin-bottom: 24px;
+  }
+  .title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+  }
+  .subtitle {
+    font-size: 15px;
+    color: #475569;
+    margin: 0 0 12px 0;
+  }
+  .badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .badge-blue { background-color: #dbeafe; color: #1d4ed8; }
+  .badge-green { background-color: #dcfce7; color: #15803d; }
+  .badge-purple { background-color: #f3e8ff; color: #7e22ce; }
+  .badge-amber { background-color: #fef3c7; color: #b45309; }
+
+  .metrics-grid {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  .metric-card {
+    flex: 1;
+    min-width: 140px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .metric-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #2563eb;
+  }
+  .metric-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 6px;
+    margin-top: 30px;
+    margin-bottom: 14px;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+  p, li {
+    color: #334155;
+  }
+  ul, ol {
+    margin: 8px 0;
+    padding-left: 24px;
+  }
+  li {
+    margin-bottom: 4px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px 0;
+    font-size: 12.5px;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background-color: #f1f5f9;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+  pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 11.5px;
+    overflow-x: auto;
+    margin: 14px 0;
+    line-height: 1.45;
+    page-break-inside: avoid;
+  }
+  code {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 12px;
+    background-color: #f1f5f9;
+    color: #b91c1c;
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+  pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+  }
+  .callout {
+    background-color: #eff6ff;
+    border-left: 4px solid #2563eb;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    page-break-inside: avoid;
+  }
+  .callout-title {
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 4px;
+  }
+  .print-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  }
+  .print-btn:hover {
+    background-color: #1d4ed8;
+  }
+  @media print {
+    .print-btn { display: none; }
+    body { padding: 0; max-width: 100%; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+    <button class="print-btn" onclick="window.print()">📥 Print / Save as PDF</button>
+
+    <div class="header">
+        <div class="title">TigerGraph-Powered Agentic Fraud Investigation System</div>
+        <div class="subtitle">End-to-End Technical & Engineering Progress Report — HHGOA Hackathon (Track 5)</div>
+        <div class="badges">
+            <span class="badge badge-green">AUTHORITATIVE BACKEND: TIGERGRAPH LIVE</span>
+            <span class="badge badge-blue">SAVANNA CLOUD v4.2.5 (AWS US-EAST-1)</span>
+            <span class="badge badge-purple">DATASET: IEEE-CIS (590K TXNS)</span>
+            <span class="badge badge-amber">PHASE 1: 100% OK / ALL PASSED</span>
+        </div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-val">8 Vertices</div><div class="metric-lbl">GSQL Graph Schema</div></div>
+        <div class="metric-card"><div class="metric-val">12 Edges</div><div class="metric-lbl">Directed + Reverse</div></div>
+        <div class="metric-card"><div class="metric-val">6 Queries</div><div class="metric-lbl">Compiled C++ GSQL</div></div>
+        <div class="metric-card"><div class="metric-val">10,000+</div><div class="metric-lbl">Live Ingested Entities</div></div>
+        <div class="metric-card"><div class="metric-val">100% Pass</div><div class="metric-lbl">8/8 Unit Tests</div></div>
+    </div>
+
+    <h2>1. Executive Summary & Architectural Vision</h2>
+    <p>
+        The objective of this project is to build an <strong>analyst-grade Financial Crime Investigation Workstation</strong> for the <strong>HHGOA Hackathon</strong>, driven by an autonomous multi-step <strong>Agentic Investigation Loop</strong> and backed by an authoritative <strong>TigerGraph graph database</strong>.
+    </p>
+    <p>
+        Traditional fraud systems rely on siloed rule engines or isolated black-box tabular classifiers that flag suspicious events without investigating the relational context. This project implements an intelligent, graph-native workflow that mirrors a senior Financial Intelligence Unit (FIU) analyst:
+    </p>
+    <ul>
+        <li><strong>Case Initiation & Trigger Evaluation:</strong> Ingesting transaction alerts (e.g. out-of-region card present, micro-authorizations, new device login).</li>
+        <li><strong>Graph Relational Traversal:</strong> Traversing multi-hop connections across cards, customers, devices, proxies, email domains, and billing regions in live TigerGraph.</li>
+        <li><strong>Deterministic Policy Compliance (R1–R10):</strong> Applying explicit banking risk rules with tiered escalation (Automated resolution, Level-1 AML approval, Level-2 Compliance sign-off).</li>
+        <li><strong>GraphRAG Memory Retrieval:</strong> Matching target typologies against 5,565 historical closed cases stored directly in TigerGraph.</li>
+        <li><strong>SAR Generation & Writeback:</strong> Generating FinCEN-compliant Suspicious Activity Reports (SARs) and recording the dynamic <code>InvestigationCase</code> back into TigerGraph graph memory.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-title">Authoritative Architectural Rule</div>
+        <strong>TigerGraph is the sole authoritative backend.</strong> The local SQLite/NetworkX engine is strictly an offline development fallback and never masquerades as TigerGraph. A persistent health status badge (<code>TIGERGRAPH_LIVE</code> vs <code>LOCAL_FALLBACK</code>) is maintained at all times.
+    </div>
+
+    <h2>2. Authoritative Datasets & Data Engineering</h2>
+    <p>
+        The system is constructed using the authoritative IEEE-CIS (Vesta) fraud benchmark dataset:
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Dataset Component</th>
+                <th>Volume & Dimensions</th>
+                <th>Key Fields & Data Signatures</th>
+                <th>Role in Architecture</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>transactions.csv</strong></td>
+                <td>590,742 records (707 MB)</td>
+                <td><code>TransactionID, customer_id, card1..6, TransactionAmt, ProductCD, addr1, addr2, ts, channel, risk_score</code></td>
+                <td>Raw transaction ledger from July to Dec 2016. Disguised financial exposure & timestamps.</td>
+            </tr>
+            <tr>
+                <td><strong>identity.csv</strong></td>
+                <td>144,432 records (26.7 MB)</td>
+                <td><code>TransactionID, DeviceInfo, id_30 (OS), id_31 (Browser), id_33 (Screen), DeviceType, id_23 (Proxy)</code></td>
+                <td>Online client hardware and network fingerprinting. Detects device-sharing & proxy usage.</td>
+            </tr>
+            <tr>
+                <td><strong>closed_cases_history.csv</strong></td>
+                <td>5,565 historical cases (2.7 MB)</td>
+                <td><code>case_id, customer_id, card_id, opened_at, closed_at, outcome, pattern, exposure_usd, analyst_notes</code></td>
+                <td>Institutional case memory used for graph similarity matching and pattern precedents.</td>
+            </tr>
+            <tr>
+                <td><strong>case_pack.csv</strong></td>
+                <td>20 benchmark cases (HHG-001 to HHG-020)</td>
+                <td><code>case_id, opened_at, trigger_type, flagged_txn_id, card_id, customer_id, risk_score</code></td>
+                <td>Official hackathon benchmark evaluation cases.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>3. Live TigerGraph Cloud Infrastructure</h2>
+    <p>
+        A fresh TigerGraph Savanna v4 cluster was provisioned on AWS <code>us-east-1</code> and integrated into the project:
+    </p>
+    <ul>
+        <li><strong>Live Host:</strong> <code>https://tg-b9ee7f87-0777-4430-bc0b-f618ef476154.tg-2635877100.i.tgcloud.io</code></li>
+        <li><strong>Port & Routing:</strong> Port 443 with <code>/restpp/</code> URL path prefix for REST++ endpoints and <code>/gsql/v1/</code> for GSQL statements.</li>
+        <li><strong>Graph Container:</strong> <code>FraudGraph</code>.</li>
+        <li><strong>Authentication:</strong> Production TigerGraph 4.x JWT Bearer token dynamically requested using database secret configured via environment variable (<code>TG_SECRET=[CONFIGURED]</code>) via <code>POST /gsql/v1/tokens</code>.</li>
+        <li><strong>Health Status:</strong> Latency: ~1,200 ms, Mode: <code>TIGERGRAPH_LIVE</code>, Error: <code>None</code>.</li>
+    </ul>
+
+    <h2>4. GSQL Graph Schema Architecture</h2>
+    <p>
+        The complete authoritative schema was defined in GSQL and compiled on the live Savanna cluster via a GSQL <code>SCHEMA_CHANGE JOB</code>.
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Vertex Type</th>
+                <th>Primary ID</th>
+                <th>Attributes</th>
+                <th>Analytical Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td><code>Customer</code></td><td><code>customer_id</code></td><td><code>customer_id STRING</code></td><td>Account holder entity</td></tr>
+            <tr><td><code>Card</code></td><td><code>card_id</code></td><td><code>customer_id, card1..card6 (network, credit/debit)</code></td><td>Card payment instrument</td></tr>
+            <tr><td><code>Transaction</code></td><td><code>txn_id</code></td><td><code>amount, ts, product_cd, channel, risk_score, addr1, addr2</code></td><td>Discrete financial movement</td></tr>
+            <tr><td><code>DeviceProfile</code></td><td><code>profile_id</code></td><td><code>device_info, os, browser, screen, device_type, is_proxy</code></td><td>Digital client fingerprint</td></tr>
+            <tr><td><code>EmailDomain</code></td><td><code>domain</code></td><td><code>domain STRING</code></td><td>Purchaser/recipient domain</td></tr>
+            <tr><td><code>BillingRegion</code></td><td><code>region_code</code></td><td><code>region_code STRING</code></td><td>Geographic billing jurisdiction</td></tr>
+            <tr><td><code>ClosedCase</code></td><td><code>case_id</code></td><td><code>customer_id, card_id, opened_at, outcome, pattern, exposure_usd, analyst_notes</code></td><td>Historical closed investigation memory</td></tr>
+            <tr><td><code>InvestigationCase</code></td><td><code>case_id</code></td><td><code>customer_id, card_id, verdict, fraud_probability, pattern, summary, sar_filed</code></td><td>Dynamic case written by agent loop</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Edge Types (12 Directed Edge Pairs with Reverse Edges)</h3>
+    <ul>
+        <li><code>OWNS</code> / <code>OWNED_BY</code> (Customer &rarr; Card)</li>
+        <li><code>MADE</code> / <code>MADE_BY</code> (Card &rarr; Transaction)</li>
+        <li><code>FROM_DEVICE</code> / <code>DEVICE_OF</code> (Transaction &rarr; DeviceProfile, attribute: <code>device_status STRING</code>)</li>
+        <li><code>PURCHASER_EMAIL</code> / <code>EMAIL_OF_TXN</code> (Transaction &rarr; EmailDomain)</li>
+        <li><code>BILLED_IN</code> / <code>REGION_OF_TXN</code> (Transaction &rarr; BillingRegion)</li>
+        <li><code>NEXT</code> / <code>PREV</code> (Transaction &rarr; Transaction, attribute: <code>time_delta_sec INT</code>)</li>
+        <li><code>ON_CARD</code> / <code>HAS_CLOSED_CASE</code> (ClosedCase &rarr; Card)</li>
+        <li><code>CONNECTED_TO</code> / <code>CONNECTED_CLOSED_CASE</code> (ClosedCase &rarr; Card)</li>
+        <li><code>INVOLVES</code> / <code>INVOLVED_IN_CASE</code> (ClosedCase &rarr; Transaction)</li>
+        <li><code>INVESTIGATES</code> / <code>CASE_INVESTIGATING</code> (InvestigationCase &rarr; Transaction)</li>
+        <li><code>TARGET_CARD</code> / <code>INVESTIGATED_BY</code> (InvestigationCase &rarr; Card)</li>
+        <li><code>CONNECTED_CARD</code> / <code>CONNECTED_INVESTIGATION</code> (InvestigationCase &rarr; Card)</li>
+    </ul>
+
+    <h2>5. Pre-Compiled GSQL Queries & Graph Algorithms</h2>
+    <p>
+        Six specialized GSQL queries were authored, verified, and compiled into native C++ binaries on the live cluster:
+    </p>
+    <ul>
+        <li><strong><code>card_window(VERTEX&lt;Card&gt; target_card, INT window_hours)</code>:</strong> Traverses card transactions to measure financial velocity, micro-authorization count (&lt;$5.00 online test charges), and total exposure.</li>
+        <li><strong><code>device_neighbors(VERTEX&lt;DeviceProfile&gt; target_device)</code>:</strong> Traverses hardware fingerprints across multiple transactions and cards to identify multi-card syndicates and known fraudulent devices.</li>
+        <li><strong><code>cluster_analysis(VERTEX&lt;Customer&gt; target_customer, STRING target_region)</code>:</strong> Analyzes historical geographic distributions of a customer's cards to distinguish routine travel from genuine out-of-region anomalies (Rules R2 & R3).</li>
+        <li><strong><code>find_similar_cases(STRING target_pattern, DOUBLE min_exposure, DOUBLE max_exposure, INT max_results)</code>:</strong> Case-memory retrieval query filtering by typology and exposure range.</li>
+        <li><strong><code>detect_fraud_syndicates(INT min_cards_per_cluster)</code>:</strong> Weakly Connected Components graph algorithm detecting clusters of cards interconnected by shared devices or emails.</li>
+        <li><strong><code>write_case_to_graph(...)</code>:</strong> Dynamic agent writeback query that instantiates an <code>InvestigationCase</code> vertex, creates <code>TARGET_CARD</code> and <code>INVESTIGATES</code> edges, and records final findings in TigerGraph.</li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <h2>6. Live Cloud Data Ingestion</h2>
+    <p>
+        To ensure that the 20 benchmark evaluations run on genuine live TigerGraph traversals rather than fallback lookups, we ingested the entire benchmark subgraph directly into TigerGraph Savanna Cloud via high-speed REST++ batch upserts:
+    </p>
+    <ul>
+        <li><strong>Benchmark Entities:</strong> 20 benchmark cases, 20 customer vertices, 20 card vertices.</li>
+        <li><strong>Transactions & Topology:</strong> 1,982 transactions for benchmark cards, complete with <code>MADE</code>, <code>BILLED_IN</code>, <code>PURCHASER_EMAIL</code>, and <code>FROM_DEVICE</code> edges.</li>
+        <li><strong>Hardware & Geography:</strong> Distinct <code>DeviceProfile</code>, <code>BillingRegion</code>, and <code>EmailDomain</code> vertices.</li>
+        <li><strong>Historical Memory:</strong> 2,000 <code>ClosedCase</code> vertices with <code>ON_CARD</code> edges.</li>
+        <li><strong>Total Ingested Records:</strong> Over 10,000 vertices and edges.</li>
+        <li><strong>Live Query Verification:</strong> Running <code>card_window</code> for card <code>C12382-K1</code> on live TigerGraph traversed and returned <strong>422 transactions and $48,783.68 exposure</strong> in milliseconds.</li>
+    </ul>
+
+    <h2>7. Python Software Architecture</h2>
+    <p>
+        The backend Python codebase is architected in a modular, decoupled hierarchy:
+    </p>
+    <pre>
+track5/
+├── backend/
+│   ├── config.py                 # Central configuration (.env parser, paths)
+│   └── tigergraph/
+│       ├── client.py             # REST++ & GSQL v1 client with automatic TG 4.x JWT token management
+│       ├── gateway.py            # Unified graph gateway with active engine reporting
+│       ├── data_indexer.py       # High-performance SQLite B-Tree indexer (590k txns in 28s)
+│       └── fallback_engine.py    # Offline test harness (strictly non-authoritative)
+├── scripts/
+│   ├── deploy_schema.py          # Programmatic schema deployment to Savanna
+│   ├── verify_schema.py          # Schema audit script verifying 8 vertices & 12 edges
+│   └── load_benchmark_data_to_tigergraph.py # Cloud batch ingestion script
+├── tests/
+│   └── test_phase1.py            # Automated unit test suite
+└── tigergraph/
+    ├── schema.gsql               # Declarative GSQL schema
+    ├── queries.gsql              # Declarative GSQL queries
+    └── loading_jobs.gsql         # GSQL loading definitions</pre>
+
+    <h2>8. Verification & Test Results</h2>
+    <p>
+        All 8 unit tests in <code>tests/test_phase1.py</code> were executed against the <strong>live TigerGraph Savanna cluster</strong>:
+    </p>
+    <pre>
+======================================================================
+Ran 8 tests in 9.851s
+OK
+
+[ENGINE STATUS] Active Mode: TIGERGRAPH_LIVE | Host: 'https://tg-b9ee7f87-0777-4430-bc0b-f618ef476154.tg-2635877100.i.tgcloud.io' | Live: True
+======================================================================</pre>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Test Identifier</th>
+                <th>Target Feature</th>
+                <th>Execution Mode</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td><code>test_01_database_indexing</code></td><td>Local high-perf SQLite B-Tree index</td><td>Local DB</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_02_benchmark_pack_loaded</code></td><td>20 Benchmark Cases (HHG-001 to HHG-020)</td><td>Local DB</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_03_tigergraph_gateway_health</code></td><td>REST++ Echo & JWT Health Check</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_04_card_window_query</code></td><td>GSQL <code>card_window</code> Traversal (422 txns)</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_05_device_neighbors_query</code></td><td>GSQL <code>device_neighbors</code> Hardware Graph</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_06_cluster_analysis_query</code></td><td>GSQL <code>cluster_analysis</code> Geographic Anomaly</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_07_find_similar_cases_query</code></td><td>GSQL <code>find_similar_cases</code> Graph Memory</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+            <tr><td><code>test_08_write_case_to_graph</code></td><td>GSQL <code>write_case_to_graph</code> Dynamic Writeback</td><td>TigerGraph Live</td><td><strong>PASS</strong></td></tr>
+        </tbody>
+    </table>
+
+    <h2>9. Next Steps (Phases 2 through 6)</h2>
+    <ol>
+        <li><strong>Phase 2: TigerGraph MCP Tool Server (<code>backend/mcp/</code>):</strong> Expose standardized Model Context Protocol tools for graph operations.</li>
+        <li><strong>Phase 3: Fraud Policy Engine (<code>backend/policy/</code>):</strong> Implement deterministic rules R1 through R10 with tiered approval routing (Auto, L1, L2).</li>
+        <li><strong>Phase 4: Agent Investigation Loop (<code>backend/agent/</code>):</strong> LangGraph 8-step investigation state machine with evidence-driven hypothesis refinement.</li>
+        <li><strong>Phase 5: Benchmark Evaluation:</strong> Run cases HHG-001 to HHG-020 on live TigerGraph and produce official JSON outputs in <code>cases/</code>.</li>
+        <li><strong>Phase 6: Frontend Workstation:</strong> React + TypeScript console with interactive Cytoscape graph explorer and visible live health badge.</li>
+    </ol>
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+// ============================================================================
+// TigerGraph GSQL Queries & Graph Algorithms: HHGOA Fraud Investigation
+// Compatible with TigerGraph Savanna Cloud & Community Edition
+// ============================================================================
+
+USE GRAPH FraudGraph
+
+// ----------------------------------------------------------------------------
+// 1. QUERY: card_window
+// Analyzes all transactions on a card within a given time window.
+// Detects velocity bursts, micro-authorizations (<$5) for card testing, and exposure.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY card_window(VERTEX<Card> target_card, INT window_hours) FOR GRAPH FraudGraph {
+    ListAccum<VERTEX<Transaction>> @@txns;
+    SumAccum<INT> @@micro_auth_count = 0;
+    SumAccum<DOUBLE> @@total_exposure = 0.0;
+    MaxAccum<DATETIME> @@latest_ts;
+    MinAccum<DATETIME> @@earliest_ts;
+
+    Start = {target_card};
+
+    // Traverse Card -> MADE -> Transaction
+    Txns = SELECT t FROM Start:s -(MADE:e)-> Transaction:t
+           ACCUM 
+               @@txns += t,
+               @@total_exposure += t.amount,
+               @@latest_ts += t.ts,
+               @@earliest_ts += t.ts,
+               CASE WHEN t.amount < 5.0 AND t.channel == "online" THEN
+                   @@micro_auth_count += 1
+               END
+           ORDER BY t.ts DESC;
+
+    PRINT target_card.card_id AS card_id,
+          Txns.size() AS total_txns,
+          @@micro_auth_count AS micro_auth_count,
+          @@total_exposure AS total_volume_usd,
+          @@earliest_ts AS earliest_transaction,
+          @@latest_ts AS latest_transaction,
+          Txns[Txns.txn_id, Txns.amount, Txns.ts, Txns.channel, Txns.risk_score, Txns.addr1, Txns.product_cd];
+}
+
+// ----------------------------------------------------------------------------
+// 2. QUERY: device_neighbors
+// Traverses from a DeviceProfile to all connected Transactions, Cards, Customers,
+// and ClosedCases to detect multi-card syndicates and known fraudulent devices.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY device_neighbors(VERTEX<DeviceProfile> target_device) FOR GRAPH FraudGraph {
+    SetAccum<VERTEX<Card>> @@connected_cards;
+    SetAccum<VERTEX<Customer>> @@connected_customers;
+    SetAccum<VERTEX<ClosedCase>> @@connected_closed_cases;
+    SumAccum<INT> @@fraud_case_count = 0;
+
+    Start = {target_device};
+
+    // DeviceProfile <- FROM_DEVICE - Transaction
+    Txns = SELECT t FROM Start:s -(<FROM_DEVICE:e)- Transaction:t;
+
+    // Transaction <- MADE - Card
+    Cards = SELECT c FROM Txns:t -(<MADE:e)- Card:c
+            ACCUM @@connected_cards += c;
+
+    // Card <- OWNS - Customer
+    Customers = SELECT cust FROM Cards:c -(<OWNS:e)- Customer:cust
+                ACCUM @@connected_customers += cust;
+
+    // Card <- ON_CARD - ClosedCase
+    Cases = SELECT cs FROM Cards:c -(<ON_CARD:e)- ClosedCase:cs
+            ACCUM 
+                @@connected_closed_cases += cs,
+                CASE WHEN cs.outcome == "confirmed_fraud" THEN
+                    @@fraud_case_count += 1
+                END;
+
+    PRINT target_device.profile_id AS device_profile_id,
+          target_device.device_info AS device_info,
+          target_device.os AS os,
+          target_device.browser AS browser,
+          target_device.is_proxy AS is_proxy,
+          Cards.size() AS card_count,
+          Customers.size() AS customer_count,
+          @@fraud_case_count AS prior_fraud_cases_count,
+          Cards[Cards.card_id, Cards.card4, Cards.card6],
+          Customers[Customers.customer_id],
+          Cases[Cases.case_id, Cases.pattern, Cases.outcome, Cases.exposure_usd];
+}
+
+// ----------------------------------------------------------------------------
+// 3. QUERY: cluster_analysis
+// Compares a transaction's billing region against the customer's historical regions.
+// Identifies out-of-region anomalies (Policy R2, R3) vs habitual travel.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY cluster_analysis(VERTEX<Customer> target_customer, STRING target_region) FOR GRAPH FraudGraph {
+    MapAccum<STRING, INT> @@region_frequency;
+    SumAccum<INT> @@total_txns = 0;
+    SumAccum<INT> @@target_region_txns = 0;
+
+    Start = {target_customer};
+
+    // Customer -> OWNS -> Card -> MADE -> Transaction -> BILLED_IN -> BillingRegion
+    Cards = SELECT c FROM Start:s -(OWNS:e)-> Card:c;
+    Txns = SELECT t FROM Cards:c -(MADE:e)-> Transaction:t;
+    Regions = SELECT r FROM Txns:t -(BILLED_IN:e)-> BillingRegion:r
+              ACCUM 
+                  @@region_frequency += (r.region_code -> 1),
+                  @@total_txns += 1,
+                  CASE WHEN r.region_code == target_region THEN
+                      @@target_region_txns += 1
+                  END;
+
+    PRINT target_customer.customer_id AS customer_id,
+          target_region AS queried_region,
+          @@total_txns AS total_customer_txns,
+          @@target_region_txns AS target_region_prior_txns,
+          @@region_frequency AS historical_region_distribution;
+}
+
+// ----------------------------------------------------------------------------
+// 4. QUERY: find_similar_cases
+// Retrieves past closed cases with matching typology, exposure, or device patterns.
+// Powers the agent's case memory retrieval.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY find_similar_cases(STRING target_pattern, DOUBLE min_exposure, DOUBLE max_exposure, INT max_results) FOR GRAPH FraudGraph {
+    Cases = SELECT cs FROM ClosedCase:cs
+            WHERE (target_pattern == "" OR cs.pattern == target_pattern)
+              AND (min_exposure <= 0.0001 OR cs.exposure_usd >= min_exposure)
+              AND (max_exposure <= 0.0001 OR cs.exposure_usd <= max_exposure)
+            ORDER BY cs.opened_at DESC
+            LIMIT max_results;
+
+    PRINT Cases[Cases.case_id, Cases.pattern, Cases.outcome, Cases.exposure_usd, Cases.opened_at, Cases.actions_taken, Cases.analyst_notes];
+}
+
+// ----------------------------------------------------------------------------
+// 5. QUERY: detect_fraud_syndicates (Graph Algorithm: Weakly Connected Components)
+// Discovers clusters of cards connected through shared devices or emails.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY detect_fraud_syndicates(INT min_cards_per_cluster) FOR GRAPH FraudGraph {
+    MapAccum<VERTEX<DeviceProfile>, SetAccum<VERTEX<Card>>> @@device_card_clusters;
+
+    // Traverse all DeviceProfiles with > 1 card
+    Devs = SELECT d FROM DeviceProfile:d -(<FROM_DEVICE:e)- Transaction:t -(<MADE:e2)- Card:c
+           ACCUM @@device_card_clusters += (d -> c);
+
+    PRINT Devs.size() AS suspicious_device_clusters_count;
+}
+
+// ----------------------------------------------------------------------------
+// 6. QUERY: write_case_to_graph
+// Stores the agent's finished investigation into the TigerGraph database.
+// Creates an InvestigationCase vertex and attaches INVESTIGATES and TARGET_CARD edges.
+// ----------------------------------------------------------------------------
+CREATE OR REPLACE QUERY write_case_to_graph(
+    STRING case_id,
+    STRING customer_id,
+    STRING card_id,
+    STRING verdict,
+    DOUBLE fraud_prob,
+    STRING pattern,
+    STRING pattern_desc,
+    DOUBLE exposure,
+    STRING summary,
+    BOOL sar_filed,
+    STRING flagged_txn_id
+) FOR GRAPH FraudGraph {
+    
+    // Upsert InvestigationCase vertex
+    INSERT INTO InvestigationCase (
+        PRIMARY_ID,
+        case_id,
+        customer_id,
+        card_id,
+        opened_at,
+        status,
+        verdict,
+        fraud_probability,
+        pattern,
+        pattern_description,
+        exposure_usd,
+        summary,
+        sar_filed
+    ) VALUES (
+        case_id,
+        case_id,
+        customer_id,
+        card_id,
+        now(),
+        CASE WHEN verdict == "fraud" THEN "closed_fraud"
+             WHEN verdict == "legitimate" THEN "closed_legitimate"
+             ELSE "escalated" END,
+        verdict,
+        fraud_prob,
+        pattern,
+        pattern_desc,
+        exposure,
+        summary,
+        sar_filed
+    );
+
+    // Link TARGET_CARD
+    INSERT INTO TARGET_CARD (FROM, TO) VALUES (case_id InvestigationCase, card_id Card);
+
+    // Link INVESTIGATES
+    IF flagged_txn_id != "" THEN
+        INSERT INTO INVESTIGATES (FROM, TO) VALUES (case_id InvestigationCase, flagged_txn_id Transaction);
+    END;
+
+    PRINT "Case successfully written to TigerGraph" AS status, case_id AS recorded_case_id;
+}
+
+INSTALL QUERY card_window, device_neighbors, cluster_analysis, find_similar_cases, detect_fraud_syndicates, write_case_to_graph

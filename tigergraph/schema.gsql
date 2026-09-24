@@ -1,0 +1,147 @@
+// ============================================================================
+// TigerGraph Schema Definition: HHGOA Fraud Investigation Graph
+// Graph Name: FraudGraph
+// Compatible with TigerGraph Savanna Cloud & Community Edition (GSQL 3.x / 4.x)
+// ============================================================================
+
+CREATE GRAPH FraudGraph()
+
+USE GRAPH FraudGraph
+
+// ----------------------------------------------------------------------------
+// VERTEX DEFINITIONS
+// ----------------------------------------------------------------------------
+
+// 1. Customer Vertex
+// Represents an individual bank customer holding one or more payment cards.
+CREATE VERTEX Customer (
+    PRIMARY_ID customer_id STRING,
+    customer_id STRING
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 2. Card Vertex
+// Represents a specific card instance (e.g. C12382-K1).
+CREATE VERTEX Card (
+    PRIMARY_ID card_id STRING,
+    card_id STRING,
+    customer_id STRING,
+    card1 STRING,
+    card2 STRING,
+    card3 STRING,
+    card4 STRING, // network: visa, mastercard, discover, american express
+    card5 STRING,
+    card6 STRING  // type: credit, debit
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 3. Transaction Vertex
+// Every transaction from the IEEE-CIS dataset with disguised amounts and timestamps.
+CREATE VERTEX Transaction (
+    PRIMARY_ID txn_id STRING,
+    txn_id STRING,
+    amount DOUBLE,
+    ts DATETIME,
+    product_cd STRING,
+    channel STRING,     // in_person or online
+    risk_score DOUBLE,  // bank model risk score 0.0 to 1.0
+    addr1 STRING,       // billing region code
+    addr2 STRING,       // billing country code (87 = home country)
+    dist1 DOUBLE,
+    dist2 DOUBLE
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 4. DeviceProfile Vertex
+// Online transaction device & client fingerprint: DeviceInfo + OS + browser + screen
+CREATE VERTEX DeviceProfile (
+    PRIMARY_ID profile_id STRING,
+    profile_id STRING,
+    device_info STRING,
+    os STRING,
+    browser STRING,
+    screen STRING,
+    device_type STRING,
+    is_proxy STRING     // id_23 value (e.g., IP_PROXY:ANONYMOUS, IP_PROXY:TRANSPARENT, IP_PROXY:HIDDEN)
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 5. EmailDomain Vertex
+// Domain extracted from purchaser or recipient email addresses.
+CREATE VERTEX EmailDomain (
+    PRIMARY_ID domain STRING,
+    domain STRING
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 6. BillingRegion Vertex
+// Geographic billing region code derived from addr1.
+CREATE VERTEX BillingRegion (
+    PRIMARY_ID region_code STRING,
+    region_code STRING
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 7. ClosedCase Vertex
+// Historical investigations (July to October 2016) used as investigation memory.
+CREATE VERTEX ClosedCase (
+    PRIMARY_ID case_id STRING,
+    case_id STRING,
+    customer_id STRING,
+    card_id STRING,
+    opened_at DATETIME,
+    closed_at DATETIME,
+    outcome STRING,       // confirmed_fraud | cleared
+    pattern STRING,       // card_testing, card_not_present_fraud, card_not_present_new_device, out_of_region_use, account_takeover, undocumented, none
+    first_fraud_txn_id STRING,
+    n_txns INT,
+    exposure_usd DOUBLE,
+    actions_taken STRING,
+    report_filed STRING,  // Yes | No
+    analyst_notes STRING
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+// 8. InvestigationCase Vertex
+// Dynamic investigation case opened and progressed by the agent during live investigations.
+CREATE VERTEX InvestigationCase (
+    PRIMARY_ID case_id STRING,
+    case_id STRING,
+    customer_id STRING,
+    card_id STRING,
+    opened_at DATETIME,
+    status STRING,               // open | closed_fraud | closed_legitimate | escalated
+    verdict STRING,              // fraud | legitimate | uncertain
+    fraud_probability DOUBLE,
+    pattern STRING,
+    pattern_description STRING,
+    exposure_usd DOUBLE,
+    summary STRING,
+    sar_filed BOOL
+) WITH STATS="OUTDEGREE_BY_EDGETYPE";
+
+
+// ----------------------------------------------------------------------------
+// EDGE DEFINITIONS
+// ----------------------------------------------------------------------------
+
+// Customer owns Card
+CREATE DIRECTED EDGE OWNS (FROM Customer, TO Card) WITH REVERSE_EDGE="OWNED_BY";
+
+// Card made Transaction
+CREATE DIRECTED EDGE MADE (FROM Card, TO Transaction) WITH REVERSE_EDGE="MADE_BY";
+
+// Online Transaction originated from DeviceProfile
+CREATE DIRECTED EDGE FROM_DEVICE (FROM Transaction, TO DeviceProfile, device_status STRING) WITH REVERSE_EDGE="DEVICE_OF";
+
+// Transaction used purchaser email domain
+CREATE DIRECTED EDGE PURCHASER_EMAIL (FROM Transaction, TO EmailDomain) WITH REVERSE_EDGE="EMAIL_OF_TXN";
+
+// Transaction billed in BillingRegion
+CREATE DIRECTED EDGE BILLED_IN (FROM Transaction, TO BillingRegion) WITH REVERSE_EDGE="REGION_OF_TXN";
+
+// Temporal transaction chain within the same card
+CREATE DIRECTED EDGE NEXT (FROM Transaction, TO Transaction, time_delta_sec INT) WITH REVERSE_EDGE="PREV";
+
+// Historical closed case links
+CREATE DIRECTED EDGE INVOLVES (FROM ClosedCase, TO Transaction) WITH REVERSE_EDGE="INVOLVED_IN_CASE";
+CREATE DIRECTED EDGE ON_CARD (FROM ClosedCase, TO Card) WITH REVERSE_EDGE="HAS_CLOSED_CASE";
+CREATE DIRECTED EDGE CONNECTED_TO (FROM ClosedCase, TO Card) WITH REVERSE_EDGE="CONNECTED_CLOSED_CASE";
+
+// Live investigation case links
+CREATE DIRECTED EDGE INVESTIGATES (FROM InvestigationCase, TO Transaction) WITH REVERSE_EDGE="CASE_INVESTIGATING";
+CREATE DIRECTED EDGE TARGET_CARD (FROM InvestigationCase, TO Card) WITH REVERSE_EDGE="INVESTIGATED_BY";
+CREATE DIRECTED EDGE CONNECTED_CARD (FROM InvestigationCase, TO Card) WITH REVERSE_EDGE="CONNECTED_INVESTIGATION";
