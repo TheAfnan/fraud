@@ -180,5 +180,90 @@ class TestHackathonAlignment(unittest.TestCase):
             status = graph_gateway.get_engine_status()
             self.assertTrue(status.get("is_live"))
 
+    def test_K_all_three_trigger_types_enter_identical_workflow(self):
+        """Test K: Verifies risk_score, customer_report, and analyst_request enter identical agentic workflow."""
+        # 1. Trigger A: risk_score (HHG-001)
+        res_risk = stateful_agent.investigate({
+            "case_id": "HHG-TEST-TRIG-A",
+            "customer_id": "C12382",
+            "card_id": "C12382-K1",
+            "flagged_txn_id": "3514030",
+            "trigger_type": "risk_score",
+            "trigger_text": "Model risk score 0.61",
+            "risk_score": 0.61
+        })
+        self.assertEqual(res_risk.trigger["type"], "risk_score")
+        self.assertIn(res_risk.case_status, ["closed_legitimate", "closed_fraud", "escalated"])
+        self.assertGreater(len(res_risk.evidence), 0)
+
+        # 2. Trigger B: customer_report (HHG-003)
+        res_cust = stateful_agent.investigate({
+            "case_id": "HHG-TEST-TRIG-B",
+            "customer_id": "C08623",
+            "card_id": "C08623-K2",
+            "flagged_txn_id": "3530164",
+            "trigger_type": "customer_report",
+            "trigger_text": "Customer disputed charge",
+            "risk_score": 0.0
+        })
+        self.assertEqual(res_cust.trigger["type"], "customer_report")
+        self.assertEqual(res_cust.case_status, "closed_fraud")
+        self.assertGreaterEqual(len(res_cust.requested_evidence), 1)
+
+        # 3. Trigger C: analyst_request (HHG-014)
+        res_analyst = stateful_agent.investigate({
+            "case_id": "HHG-TEST-TRIG-C",
+            "customer_id": "C13487",
+            "card_id": "C13487-K1",
+            "flagged_txn_id": "3478561",
+            "trigger_type": "analyst_request",
+            "trigger_text": "Analyst request: review device sharing across cards",
+            "risk_score": 0.50
+        })
+        self.assertEqual(res_analyst.trigger["type"], "analyst_request")
+        self.assertEqual(res_analyst.case_status, "closed_fraud")
+        self.assertGreater(len(res_analyst.entities["connected_card_ids"]), 0)
+
+    def test_L_action_execution_permissions_and_approval_routing(self):
+        """Test L: Verifies strict policy permission enforcement: auto vs L1 vs L2."""
+        from backend.policy.engine import policy_engine
+
+        # Verify auto actions: agent can auto-execute
+        auto_actions = ["ALLOW_TRANSACTION", "MONITOR_CARD", "MONITOR_CONNECTED_CARDS", 
+                        "WARN_CUSTOMER", "VERIFY_WITH_CUSTOMER", "STEP_UP_AUTH", 
+                        "CREATE_CASE", "CLOSE_NO_FRAUD"]
+        for act in auto_actions:
+            perm = policy_engine.get_action_permission(act)
+            self.assertEqual(perm["route"], "auto")
+            self.assertEqual(perm["execution_status"], "AUTHORIZED")
+            self.assertTrue(perm["can_auto_execute"])
+
+        # Verify L1 actions: require L1 approval, agent cannot auto-execute
+        l1_perm = policy_engine.get_action_permission("DECLINE_TRANSACTION")
+        self.assertEqual(l1_perm["route"], "L1")
+        self.assertEqual(l1_perm["execution_status"], "APPROVAL_REQUIRED")
+        self.assertFalse(l1_perm["can_auto_execute"])
+
+        block_low_perm = policy_engine.get_action_permission("BLOCK_CARD", exposure_usd=1500.0)
+        self.assertEqual(block_low_perm["route"], "L1")
+        self.assertEqual(block_low_perm["execution_status"], "APPROVAL_REQUIRED")
+        self.assertFalse(block_low_perm["can_auto_execute"])
+
+        # Verify L2 actions: require L2 approval, agent cannot auto-execute
+        block_high_perm = policy_engine.get_action_permission("BLOCK_CARD", exposure_usd=3500.0)
+        self.assertEqual(block_high_perm["route"], "L2")
+        self.assertEqual(block_high_perm["execution_status"], "APPROVAL_REQUIRED")
+        self.assertFalse(block_high_perm["can_auto_execute"])
+
+        block_all_perm = policy_engine.get_action_permission("BLOCK_ALL_CARDS")
+        self.assertEqual(block_all_perm["route"], "L2")
+        self.assertEqual(block_all_perm["execution_status"], "APPROVAL_REQUIRED")
+        self.assertFalse(block_all_perm["can_auto_execute"])
+
+        sar_perm = policy_engine.get_action_permission("FILE_REPORT")
+        self.assertEqual(sar_perm["route"], "L2")
+        self.assertEqual(sar_perm["execution_status"], "APPROVAL_REQUIRED")
+        self.assertFalse(sar_perm["can_auto_execute"])
+
 if __name__ == "__main__":
     unittest.main()

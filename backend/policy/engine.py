@@ -239,5 +239,24 @@ class FraudPolicyEngine:
             "execution_status": exec_status
         }
 
+    def can_auto_execute(self, action: str) -> bool:
+        """Returns True if the action has 'auto' approval route and can be executed by the agent."""
+        act = action.upper().strip()
+        return act in [
+            "ALLOW_TRANSACTION", "MONITOR_CARD", "MONITOR_CONNECTED_CARDS", 
+            "WARN_CUSTOMER", "VERIFY_WITH_CUSTOMER", "STEP_UP_AUTH", 
+            "GENERATE_REPORT", "CREATE_CASE", "ESCALATE_TO_ANALYST", "CLOSE_NO_FRAUD"
+        ]
+
+    def get_action_permission(self, action: str, exposure_usd: float = 0.0) -> Dict[str, Any]:
+        """Returns route and execution permission status for an action."""
+        act_dict = self._create_action(action, "", exposure_usd)
+        return {
+            "action": act_dict["action"],
+            "route": act_dict["route"],
+            "execution_status": act_dict["execution_status"],
+            "can_auto_execute": self.can_auto_execute(act_dict["action"])
+        }
+
 # Global singleton
 policy_engine = FraudPolicyEngine()
